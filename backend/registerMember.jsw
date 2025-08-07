@@ -1,0 +1,85 @@
+import wixData from 'wix-data';
+import wixUsersBackend from 'wix-users-backend';
+
+/**
+ * Registers a member by email, password and CNPJ.
+ * Cleans and validates the CNPJ, checks for duplicates, creates the user,
+ * and inserts the member record into the collection.
+ * @param {{email: string, password: string, cnpj: string}} params
+ * @returns {Promise<{id: string}>}
+ */
+export async function registerMember({ email, password, cnpj }) {
+  console.log('registerMember called', { email, cnpj });
+
+  try {
+    const cleanCnpj = (cnpj || '').replace(/\D/g, '');
+    if (!isValidCnpj(cleanCnpj)) {
+      throw new Error('Invalid CNPJ');
+    }
+
+    const duplicate = await wixData
+      .query('Members/FullData')
+      .eq('cnpj', cleanCnpj)
+      .find();
+
+    if (duplicate.items.length > 0) {
+      throw new Error('CNPJ already registered');
+    }
+
+    const user = await wixUsersBackend.createUser(email, password);
+
+    const memberData = {
+      _id: user.id,
+      email,
+      cnpj: cleanCnpj,
+    };
+
+    await wixData.insert('Members/FullData', memberData);
+
+    return { id: user.id };
+  } catch (error) {
+    console.error('registerMember error', error);
+    throw error;
+  }
+}
+
+function isValidCnpj(cnpj) {
+  if (cnpj.length !== 14) {
+    return false;
+  }
+  if (/^(\d)\1+$/.test(cnpj)) {
+    return false;
+  }
+
+  const calculateCheckDigit = (base) => {
+    let size = base.length;
+    let numbers = base.split('').map((n) => parseInt(n, 10));
+    let position = size - 7;
+    let sum = 0;
+
+    for (let i = size; i >= 1; i--) {
+      sum += numbers[size - i] * position--;
+      if (position < 2) {
+        position = 9;
+      }
+    }
+
+    const result = sum % 11;
+    return result < 2 ? 0 : 11 - result;
+  };
+
+  const numbers = cnpj.substring(0, 12);
+  const digits = cnpj.substring(12);
+
+  const firstCheck = calculateCheckDigit(numbers);
+  if (firstCheck !== parseInt(digits.charAt(0), 10)) {
+    return false;
+  }
+
+  const secondCheck = calculateCheckDigit(numbers + firstCheck);
+  if (secondCheck !== parseInt(digits.charAt(1), 10)) {
+    return false;
+  }
+
+  return true;
+}
