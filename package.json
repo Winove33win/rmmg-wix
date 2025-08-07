@@ -1,0 +1,8 @@
+{
+  "name": "rmmg-wix",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node backend/index.js && node frontend/index.js"
+  }
+}
