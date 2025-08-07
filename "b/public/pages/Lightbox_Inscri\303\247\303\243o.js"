@@ -1,0 +1,32 @@
+import { registerMember } from '../backend/registerMember.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+  const emailInput = document.getElementById('emailInput');
+  const passwordInput = document.getElementById('passwordInput');
+  const cnpjInput = document.getElementById('cnpjInput');
+  const successMessage = document.getElementById('successMessage');
+  const errorMessage = document.getElementById('errorMessage');
+  const form = document.getElementById('registerForm');
+
+  if (!form) {
+    console.error('registerForm not found');
+    return;
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    successMessage.textContent = '';
+    errorMessage.textContent = '';
+
+    try {
+      await registerMember({
+        email: emailInput.value,
+        password: passwordInput.value,
+        cnpj: cnpjInput.value,
+      });
+      successMessage.textContent = 'Cadastro realizado com sucesso!';
+    } catch (err) {
+      errorMessage.textContent = err.message || 'Erro ao realizar cadastro.';
+    }
+  });
+});
